@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kalshi NFL Bet Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: bet slips on top (what is at stake), then a grid of game cards (what is happening). */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#15202b; --muted:#5d6b78; --line:#d5dbe1;
+  --accent:#0b5cad; --good:#12804a; --bad:#c0392b; --warn:#a86a00;
+  --good-bg:#e1f3e8; --bad-bg:#fae4e1; --warn-bg:#fbefd5; --idle-bg:#e8ecf0;
+  --display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0f151b; --panel:#18212a; --ink:#e8edf2; --muted:#93a1ae; --line:#2a3642;
+    --accent:#62aef5; --good:#4cc487; --bad:#f07b6c; --warn:#e5b04a;
+    --good-bg:#143524; --bad-bg:#41201c; --warn-bg:#3d3015; --idle-bg:#232e39;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0f151b; --panel:#18212a; --ink:#e8edf2; --muted:#93a1ae; --line:#2a3642;
+  --accent:#62aef5; --good:#4cc487; --bad:#f07b6c; --warn:#e5b04a;
+  --good-bg:#143524; --bad-bg:#41201c; --warn-bg:#3d3015; --idle-bg:#232e39;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 40px;display:flex;flex-direction:column;gap:20px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between}
+h1{font-family:var(--display);font-weight:700;font-size:34px;line-height:1;margin:0;letter-spacing:.01em;text-transform:uppercase}
+h2{font-family:var(--display);font-weight:600;font-size:20px;margin:0;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:13px}
+button{font:inherit;font-weight:600;color:var(--panel);background:var(--accent);border:0;border-radius:6px;padding:7px 14px;cursor:pointer}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.banner{background:var(--warn-bg);color:var(--ink);border-left:4px solid var(--warn);padding:10px 12px;border-radius:4px;font-size:14px}
+.banner[hidden]{display:none}
+.slips{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.slip{background:var(--panel);border:1px solid var(--line);border-top:4px solid var(--muted);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.slip.s-good{border-top-color:var(--good)} .slip.s-bad{border-top-color:var(--bad)} .slip.s-warn{border-top-color:var(--warn)}
+.slip-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.slip-name{font-weight:600}
+.slip-pay{font-family:var(--display);font-size:28px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.slip-sub{color:var(--muted);font-size:13px}
+.legs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:14px}
+.legs li{display:flex;justify-content:space-between;gap:8px}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--idle-bg);color:var(--muted);white-space:nowrap}
+.pill.good{background:var(--good-bg);color:var(--good)} .pill.bad{background:var(--bad-bg);color:var(--bad)} .pill.warn{background:var(--warn-bg);color:var(--warn)}
+.games{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:12px}
+.game{background:var(--panel);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column}
+.g-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--muted)}
+.live{color:var(--bad);font-weight:600}
+.live::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bad);margin-right:6px}
+.team{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:10px 14px}
+.team + .team{border-top:1px dashed var(--line)}
+.t-name{font-family:var(--display);font-size:24px;font-weight:600;line-height:1.1}
+.t-name small{font-family:var(--body);font-size:12px;font-weight:500;color:var(--muted);margin-left:6px}
+.t-score{font-family:var(--display);font-size:38px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;grid-row:span 2;align-self:center}
+.t-score.dim{color:var(--muted)}
+.bets{display:flex;flex-wrap:wrap;gap:6px}
+.nobet{font-size:12px;color:var(--muted)}
+.g-foot{border-top:1px solid var(--line);padding:10px 14px;font-size:14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.g-foot .lbl{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.play{display:grid;grid-template-columns:auto 1fr;gap:8px}
+.play .clk{color:var(--muted);font-variant-numeric:tabular-nums;font-size:13px;white-space:nowrap;padding-top:1px}
+.final{font-family:var(--display);font-size:22px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.note{color:var(--muted);font-size:13px;max-width:75ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Kalshi NFL Bet Tracker</h1>
+      <div class="meta">Week of Nov 22, 2026 &middot; times shown in your local time</div>
+    </div>
+    <div class="meta">
+      <span id="updated">Loading scores...</span>
+      <button id="refresh" type="button">Refresh now</button>
+    </div>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <section>
+    <h2>Your bets</h2>
+    <div class="slips" id="slips" style="margin-top:10px"></div>
+  </section>
+
+  <section>
+    <h2>Games</h2>
+    <div class="games" id="games" style="margin-top:10px"></div>
+  </section>
+
+  <p class="note">Scores and plays come from ESPN's public scoreboard feed and refresh every 30 seconds. Bet status compares the score only; it does not read your Kalshi account, and Kalshi settles each market under its own rules. Combo amounts are shown as the payout if every leg wins.</p>
+</div>
+
+<script>
+/* ---------- Your bets (edit here each week) ---------- */
+const TEAMS = {
+  BAL:"Ravens", CAR:"Panthers", DAL:"Cowboys", TEN:"Titans", NO:"Saints", CHI:"Bears",
+  PIT:"Steelers", PHI:"Eagles", TB:"Buccaneers", DET:"Lions", LAC:"Chargers", NYJ:"Jets",
+  SF:"49ers", MIN:"Vikings", LAR:"Rams", GB:"Packers"
+};
+const CITY = {
+  BAL:"Baltimore", CAR:"Carolina", DAL:"Dallas", TEN:"Tennessee", NO:"New Orleans", CHI:"Chicago",
+  PIT:"Pittsburgh", PHI:"Philadelphia", TB:"Tampa Bay", DET:"Detroit", LAC:"LA Chargers", NYJ:"NY Jets",
+  SF:"San Francisco", MIN:"Minnesota", LAR:"LA Rams", GB:"Green Bay"
+};
+// Games in the order of your sheet.
+const MATCHUPS = [["BAL","CAR"],["DAL","TEN"],["NO","CHI"],["PIT","PHI"],["TB","DET"],["LAC","NYJ"],["SF","MIN"],["LAR","GB"]];
+const BETS = [
+  {id:"c2000", kind:"combo",  name:"Combo",          pays:2000, legs:["CAR","TEN","PHI","NYJ"]},
+  {id:"c270",  kind:"combo",  name:"Combo",          pays:270,  legs:["CHI","DET","MIN","GB"]},
+  {id:"bal",   kind:"single", name:"Ravens to win",  stake:30,  pays:67,  legs:["BAL"]},
+  {id:"min",   kind:"single", name:"Vikings to win", stake:300, pays:660, legs:["MIN"]}
+];
+
+/* ---------- Snapshot used only if the live feed cannot be reached ---------- */
+const SNAPSHOT_TIME = "Sun Nov 22, 2:08 PM CT";
+const SNAPSHOT = [
+  {away:["BAL",26],home:["CAR",29],state:"in",detail:"9:31 - 3rd"},
+  {away:["TEN",23],home:["DAL",34],state:"in",detail:"6:04 - 3rd"},
+  {away:["NO",10], home:["CHI",19],state:"in",detail:"2:20 - 3rd"},
+  {away:["PIT",6], home:["PHI",16],state:"in",detail:"5:34 - 3rd"},
+  {away:["TB",13], home:["DET",17],state:"in",detail:"2:28 - 3rd"},
+  {away:["NYJ",0], home:["LAC",0], state:"pre",date:"2026-11-22T21:05:00Z"},
+  {away:["MIN",0], home:["SF",0],  state:"pre",date:"2026-11-23T01:20:00Z"},
+  {away:["GB",0],  home:["LAR",0], state:"pre",date:"2026-11-26T01:00:00Z"}
+].map(g=>({state:g.state,detail:g.detail||"",date:g.date||null,plays:[],situation:"",
+  away:{abbr:g.away[0],score:g.away[1]},home:{abbr:g.home[0],score:g.home[1]}}));
+
+/* ---------- ESPN feed ---------- */
+const API = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
+const ALIAS = {LA:"LAR", WAS:"WSH", JAC:"JAX"};
+const norm = a => ALIAS[a] || a;
+// Safari rejects ISO times without seconds (ESPN sends "2026-11-22T18:00Z"), so add them.
+const toDate = v => new Date(typeof v==="string" ? v.replace(/T(\d\d:\d\d)(Z|[+-]\d\d:?\d\d)$/,"T$1:00$2") : v);
+const ymd = d => d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0");
+
+async function getJSON(url){
+  const r = await fetch(url,{cache:"no-store"});
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}
+
+async function loadLive(){
+  const now = Date.now();
+  // Current week, plus next week so midweek games (like a Wednesday game) are found too.
+  const sb = await getJSON(API+"/scoreboard");
+  try{
+    const next = await getJSON(API+"/scoreboard?seasontype="+sb.season.type+"&week="+(sb.week.number+1));
+    sb.events = (sb.events||[]).concat(next.events||[]);
+  }catch(e){ /* next week not available; current week still works */ }
+  const games = [];
+  for(const pair of MATCHUPS){
+    const hits = (sb.events||[]).filter(ev=>{
+      const ab = ((ev.competitions||[])[0]?.competitors||[]).map(c=>norm(c.team.abbreviation));
+      return pair.every(p=>ab.includes(p));
+    }).sort((a,b)=>Math.abs(toDate(a.date)-now)-Math.abs(toDate(b.date)-now));
+    const ev = hits[0];
+    if(!ev){ games.push({missing:true,away:{abbr:pair[0],score:0},home:{abbr:pair[1],score:0},state:"pre",date:null,plays:[],detail:"",situation:""}); continue; }
+    const comp = ev.competitions[0];
+    const side = w => { const c = comp.competitors.find(x=>x.homeAway===w); return {abbr:norm(c.team.abbreviation),score:parseInt(c.score,10)||0}; };
+    const st = (comp.status||ev.status).type;
+    const g = {id:ev.id,state:st.state,detail:st.shortDetail||st.detail||"",date:ev.date,away:side("away"),home:side("home"),plays:[],
+               situation:comp.situation?.downDistanceText||""};
+    if(g.state==="in" && comp.situation?.lastPlay?.text) g.plays=[{text:comp.situation.lastPlay.text,clock:""}];
+    games.push(g);
+  }
+  // Last two plays for games in progress.
+  await Promise.all(games.filter(g=>g.state==="in"&&g.id).map(async g=>{
+    try{
+      const s = await getJSON(API+"/summary?event="+g.id);
+      const drives = [...(s.drives?.previous||[])];
+      if(s.drives?.current) drives.push(s.drives.current);
+      const seen = new Set(), plays = [];
+      for(const d of drives) for(const p of (d.plays||[])){
+        if(!p.text || seen.has(p.id)) continue;
+        seen.add(p.id);
+        plays.push({text:p.text.trim(),clock:(p.period?.number?"Q"+p.period.number+" ":"")+(p.clock?.displayValue||"")});
+      }
+      if(plays.length) g.plays = plays.slice(-2).reverse();
+    }catch(e){ /* keep the single last play from the scoreboard */ }
+  }));
+  return games;
+}
+
+/* ---------- Bet status ---------- */
+function legState(g,abbr){
+  if(!g || g.state==="pre") return "pending";
+  const mine = g.away.abbr===abbr ? g.away : g.home, other = g.away.abbr===abbr ? g.home : g.away;
+  const d = mine.score-other.score;
+  if(g.state==="post") return d>0?"won":d<0?"lost":"tie";
+  return d>0?"leading":d<0?"trailing":"tied";
+}
+const LEG_LABEL = {pending:"Not started",won:"Won",lost:"Lost",tie:"Final tie",leading:"Leading",trailing:"Trailing",tied:"Tied"};
+const LEG_TONE  = {pending:"",won:"good",lost:"bad",tie:"warn",leading:"good",trailing:"bad",tied:"warn"};
+function betState(bet,byTeam){
+  const st = bet.legs.map(l=>legState(byTeam[l],l));
+  if(st.includes("lost")) return {label:"Lost",tone:"bad"};
+  if(st.every(s=>s==="won")) return {label:"Won",tone:"good"};
+  if(st.every(s=>s==="pending")) return {label:"Not started",tone:""};
+  if(st.includes("trailing")) return {label:"Alive, a leg is trailing",tone:"warn"};
+  if(st.includes("tied")||st.includes("tie")) return {label:"Alive, a leg is tied",tone:"warn"};
+  return {label: st.includes("pending") ? "Alive, on track so far" : "On track", tone:"good"};
+}
+
+/* ---------- Render ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const money = n => "$"+n.toLocaleString("en-US");
+const kickoff = iso => iso ? toDate(iso).toLocaleString("en-US",{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "Time not posted";
+
+function render(games){
+  const byTeam = {};
+  games.forEach(g=>{byTeam[g.away.abbr]=g;byTeam[g.home.abbr]=g;});
+
+  $("slips").innerHTML = BETS.map(b=>{
+    const s = betState(b,byTeam);
+    const legs = b.legs.map(l=>{const ls=legState(byTeam[l],l);return `<li><span>${esc(TEAMS[l])}</span><span class="pill ${LEG_TONE[ls]}">${LEG_LABEL[ls]}</span></li>`;}).join("");
+    const sub = b.kind==="combo" ? b.legs.length+" legs, all must win" : "Stake "+money(b.stake);
+    return `<article class="slip s-${s.tone}">
+      <div class="slip-top"><span class="slip-name">${esc(b.name)}</span><span class="pill ${s.tone}">${esc(s.label)}</span></div>
+      <div class="slip-pay">${money(b.pays)}</div>
+      <div class="slip-sub">Payout &middot; ${sub}</div>
+      <ul class="legs">${legs}</ul></article>`;
+  }).join("");
+
+  $("games").innerHTML = games.map(g=>{
+    const head = g.state==="in" ? `<span class="live">LIVE</span><span>${esc(g.detail)}</span>`
+               : g.state==="post" ? `<span>Final</span><span>${esc(g.detail)}</span>`
+               : `<span>Upcoming</span><span>${esc(kickoff(g.date))}</span>`;
+    const row = (t,where)=>{
+      const ls = legState(g,t.abbr);
+      const chips = BETS.filter(b=>b.legs.includes(t.abbr)).map(b=>{
+        const txt = b.kind==="combo" ? "Combo "+money(b.pays) : money(b.stake)+" to pay "+money(b.pays);
+        return `<span class="pill ${LEG_TONE[ls]}">${txt}</span>`;
+      }).join("");
+      return `<div class="team">
+        <div class="t-name">${esc(CITY[t.abbr])} ${esc(TEAMS[t.abbr])}<small>${where}</small></div>
+        <div class="t-score ${g.state==="pre"?"dim":""}">${g.state==="pre"?"-":t.score}</div>
+        <div class="bets">${chips||'<span class="nobet">No bet</span>'}</div></div>`;
+    };
+    let foot;
+    if(g.state==="post") foot = `<div class="final">Complete</div>`;
+    else if(g.state==="pre") foot = `<div class="lbl">Plays next</div><div>${esc(kickoff(g.date))}</div>`;
+    else {
+      const plays = g.plays.length ? g.plays.map(p=>`<div class="play"><span class="clk">${esc(p.clock||"Last")}</span><span>${esc(p.text)}</span></div>`).join("")
+                                   : `<div class="nobet">Play-by-play is not available for this game right now.</div>`;
+      foot = `<div class="lbl">Last two plays${g.situation?" &middot; "+esc(g.situation):""}</div>${plays}`;
+    }
+    return `<article class="game"><div class="g-head">${head}</div>${row(g.away,"away")}${row(g.home,"home")}<div class="g-foot">${foot}</div></article>`;
+  }).join("");
+}
+
+let busy = false;
+async function refresh(){
+  if(busy) return; busy = true;
+  $("updated").textContent = "Refreshing...";
+  try{
+    const games = await loadLive();
+    render(games);
+    $("banner").hidden = true;
+    $("updated").textContent = "Live. Updated "+new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",second:"2-digit"});
+  }catch(e){
+    render(SNAPSHOT);
+    $("banner").hidden = false;
+    $("banner").textContent = "The live score feed could not be reached from this window, so this is a saved snapshot from "+SNAPSHOT_TIME+". Download this file and open it in Chrome or Edge to get live scores and plays.";
+    $("updated").textContent = "Snapshot, not live";
+  }finally{ busy = false; }
+}
+$("refresh").addEventListener("click",refresh);
+refresh();
+setInterval(refresh,30000);
+</script>
+</body>
+</html>
